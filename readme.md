@@ -52,7 +52,7 @@ messages collection = {
 chat-box collection = {
 
 - name: string
-- id : string
+- id: string
 
 }
 
