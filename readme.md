@@ -41,15 +41,19 @@ In your appwrite console create a project and database.
 1. First of all Create two collections called "messages" and chat-box and add the following attributes:
 
 messages collection = {
+
 - user_id
 - room_id
 - username
 - body
+
 }
 
 chat-box collection = {
+
 - name
 - id
+
 }
 
 2. From your `messages` & `chat-box` collections, go to the "settings" --> "Update Permissions" --> "+ Add Role" and select "Any". Give this user type "Create", "Read", "Update" and "Delete" permissions.
