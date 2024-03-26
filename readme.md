@@ -42,17 +42,17 @@ In your appwrite console create a project and database.
 
 messages collection = {
 
-- user_id
-- room_id
-- username
-- body
+- user_id: string
+- room_id: string
+- username: string
+- body: string
 
 }
 
 chat-box collection = {
 
-- name
-- id
+- name: string
+- id : string
 
 }
 
