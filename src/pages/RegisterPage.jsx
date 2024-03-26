@@ -1,7 +1,7 @@
 import { useState } from "react";
 // import { useAuth } from "../utils/Store";
 import { Link, useNavigate } from "react-router-dom";
-import { Store } from "../utils/Store";
+import { Store } from "../lib/utils/Store";
 
 const RegisterPage = () => {
   const [credentials, setCredentials] = useState({

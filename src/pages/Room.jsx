@@ -7,12 +7,13 @@ import client, {
 
   // account,
 } from "../appwriteConfig";
-import { ID, Permission, Query /* Permission, Role */, Role } from "appwrite";
+import { ID, Permission, /* Query  Permission, Role */ Role } from "appwrite";
 import Header from "../components/Header";
-// import { useAuth } from "../utils/Store";
 import { Trash2, Edit2 } from "react-feather";
-// import { useSnapshot } from "valtio";
-import { Store } from "../utils/Store";
+import { Store } from "../lib/utils/Store";
+import { useSnapshot } from "valtio";
+import { Button } from "../components/ui/button";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 const Room = () => {
   const [messageBody, setMessageBody] = useState("");
@@ -20,26 +21,41 @@ const Room = () => {
   const [updatemode, setUpdateMode] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
 
-  // const { user, setUser } = useAuth();
-
+  const State = useSnapshot(Store);
   const textRef = useRef(null);
+  const { id } = useParams();
+
+  const location = useLocation();
+  const roomName = location && location?.state?.name;
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    console.log("room use effect working");
 
-    if (token) {
-      console.log("token", token);
-      let accountDetails = Store.getUserOnLoad();
-      if (accountDetails) {
-        Store.setUser(accountDetails);
-      } else {
-        console.log("error while getting the account details");
+    Store.roomId = id;
+
+    async function getUser() {
+      try {
+        await Store.getUserOnLoad();
+      } catch (error) {
+        console.log("error while getting the user in room component", error);
       }
     }
 
-    console.log("use effect runs");
+    getUser();
 
-    getMessages();
+    async function fetchData() {
+      try {
+        const res = await Store.getMessages();
+
+        console.log("messages list", res);
+
+        setMessages(res.documents);
+      } catch (error) {
+        console.log(`error in the fetch data function`);
+      }
+    }
+
+    fetchData();
 
     textRef.current.focus();
 
@@ -67,6 +83,9 @@ const Room = () => {
           )
         ) {
           console.log("A MESSAGE WAS DELETED!!!");
+
+          console.log(response.payload); //? response.payload is the updated object
+
           setMessages((prevState) =>
             prevState.filter((message) => message.$id !== response.payload.$id)
           );
@@ -78,12 +97,12 @@ const Room = () => {
           )
         ) {
           console.log("A MESSAGE WAS UPDATED!!!");
-
-          console.log(response.payload); //? response.payload is the updated object
-
+          console.log(
+            response.payload
+          ); /*? response.payload is the updated object */
           setMessages((prevState) =>
             prevState.map((message) => {
-              console.log("Current Message:", message); // Log each message
+              console.log("Current Message:", message);
               return message.$id === response.payload.$id
                 ? { ...message, ...response.payload }
                 : message;
@@ -93,22 +112,39 @@ const Room = () => {
       }
     );
 
-    // console.log("unsubscribe:", unsubscribe);
+    console.log("unsubscribe:", unsubscribe);
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribe();
+      console.log("unsubscribed");
+    };
+  }, [id]);
 
-  const getMessages = async () => {
-    const response = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTION_ID_MESSAGES,
-      [Query.orderDesc(`$createdAt`), Query.limit(100)]
-    );
+  // const location = useLocation();
+  // const roomName = location && location.state;
 
-    console.log("document list", response);
+  // console.log(roomName);
 
-    setMessages(response.documents);
-  };
+  // const getMessages = useCallback(async () => {
+  //   try {
+  //     Store.loading = true;
+  //     const response = await databases.listDocuments(
+  //       DATABASE_ID,
+  //       COLLECTION_ID_MESSAGES,
+  //       [
+  //         Query.orderDesc(`$createdAt`),
+  //         Query.limit(100),
+  //         Query.equal("room_id", roomId),
+  //       ]
+  //     );
+  //     // console.log("document list", response);
+  //     setMessages(response.documents);
+  //   } catch (error) {
+  //     console.log(`Error while getting the messages`, error);
+  //   } finally {
+  //     Store.loading = false;
+  //   }
+  // }, [roomId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -119,10 +155,11 @@ const Room = () => {
       user_id: Store.user.$id,
       username: Store.user.name,
       body: messageBody,
+      room_id: State.roomId,
     };
 
     if (!updatemode) {
-      const response = await databases.createDocument(
+      await databases.createDocument(
         DATABASE_ID,
         COLLECTION_ID_MESSAGES,
         ID.unique(),
@@ -130,10 +167,12 @@ const Room = () => {
         permissions
       );
 
-      getMessages();
+      console.log("document creation function runs");
+
+      Store.getMessages();
       setMessageBody("");
 
-      console.log("RESPONSE:", response);
+      // console.log("RESPONSE:", response);
     } else {
       const res = await databases.updateDocument(
         DATABASE_ID,
@@ -147,12 +186,13 @@ const Room = () => {
       setMessageBody("");
       setUpdateMode(false);
       setSelectedMessageId(null);
-      getMessages();
+      Store.getMessages();
     }
   };
 
   const deleteMessage = async (id) => {
     await databases.deleteDocument(DATABASE_ID, COLLECTION_ID_MESSAGES, id);
+    Store.getMessages();
   };
 
   const editMessage = (message) => {
@@ -161,104 +201,105 @@ const Room = () => {
     setSelectedMessageId(message.$id);
   };
 
-  // const obj1 = {
-  //   name: "sam",
-  //   id: 23,
-  //   grade: 2,
-  //   skills: "devops",
-  // };
-
-  // const obj2 = {
-  //   skills: "backend",
-  // };
-
-  // const myObj = { ...obj1, ...obj2 };
-  // console.log(myObj);
+  // console.log(State.user);
 
   return (
-    <main className="container">
-      <Header />
-      <div className="room--container">
-        <form id="message--form" onSubmit={handleSubmit}>
+    <>
+      {State.loading && !State.logoutLoading && (
+        <div className="text-center"> Loading... </div>
+      )}
+      {!State.loading && State.logoutLoading && (
+        <div className="text-center"> Logging Out... </div>
+      )}
+
+      <main className="container space-y-5">
+        <Link to="/">
+          <Button variant="secondary">Back To Chats</Button>
+        </Link>
+
+        <Header state={roomName} />
+        <div className="room--container">
+          <form id="message--form" onSubmit={handleSubmit}>
+            <div>
+              <textarea
+                required
+                maxLength="250"
+                placeholder="Say something..."
+                onChange={(e) => setMessageBody(e.target.value)}
+                value={messageBody}
+                ref={textRef}
+              ></textarea>
+            </div>
+            <div className="send-btn--wrapper">
+              <input
+                className="btn btn--secondary"
+                type="submit"
+                value={`${updatemode ? "update" : "send"}`}
+              />
+            </div>
+          </form>
+
           <div>
-            <textarea
-              required
-              maxLength="250"
-              placeholder="Say something..."
-              onChange={(e) => setMessageBody(e.target.value)}
-              value={messageBody}
-              ref={textRef}
-            ></textarea>
-          </div>
-          <div className="send-btn--wrapper">
-            <input
-              className="btn btn--secondary"
-              type="submit"
-              value={`${updatemode ? "update" : "send"}`}
-            />
-          </div>
-        </form>
-
-        <div>
-          {messages.map((message) => (
-            <div key={message.$id} className={"message--wrapper"}>
-              <div
-                className={` flex ${
-                  message.user_id === Store.user?.$id &&
-                  "justify-end items-center"
-                }`}
-              >
-                {message.$permissions.includes(
-                  `delete("user:${Store.user?.$id}")`
-                ) && (
-                  <Trash2
-                    className="text-[#8db3dd] hover:text-[#7ba3cf] cursor-pointer transition-all mr-6"
-                    onClick={() => deleteMessage(message.$id)}
-                  />
-                )}
-
-                {message.$permissions.includes(
-                  `update("user:${Store.user?.$id}")`
-                ) && (
-                  <Edit2
-                    className="text-[#8db3dd] hover:text-[#7ba3cf] cursor-pointer transition-all mr-6"
-                    onClick={() => editMessage(message)}
-                  />
-                )}
-
+            {messages.map((message) => (
+              <div key={message.$id} className={"message--wrapper"}>
                 <div
-                  className={
-                    "message--body  " +
-                    (message.user_id === Store.user?.$id
-                      ? "border-2 border-pink-600"
-                      : "bg-pink-600")
-                  }
+                  className={` flex ${
+                    message.user_id === Store.user?.$id &&
+                    "justify-end items-center"
+                  }`}
                 >
-                  <span>{message.body}</span>
-                </div>
-              </div>
-              <div
-                className={`message--header ${
-                  message.user_id === Store.user.$id ? "justify-end" : ""
-                } `}
-              >
-                <p>
-                  {message?.username ? (
-                    <span> {message?.username}</span>
-                  ) : (
-                    "Anonymous user"
+                  {message.$permissions.includes(
+                    `delete("user:${Store.user?.$id}")`
+                  ) && (
+                    <Trash2
+                      className="text-[#8db3dd] hover:text-[#7ba3cf] cursor-pointer transition-all mr-6"
+                      onClick={() => deleteMessage(message.$id)}
+                    />
                   )}
 
-                  <small className="message-timestamp">
-                    {new Date(message.$createdAt).toLocaleString()}
-                  </small>
-                </p>
+                  {message.$permissions.includes(
+                    `update("user:${Store.user?.$id}")`
+                  ) && (
+                    <Edit2
+                      className="text-[#8db3dd] hover:text-[#7ba3cf] cursor-pointer transition-all mr-6"
+                      onClick={() => editMessage(message)}
+                    />
+                  )}
+
+                  <div
+                    className={
+                      "message--body  " +
+                      (message.user_id === Store.user?.$id
+                        ? "border-2 border-pink-600"
+                        : "bg-pink-600")
+                    }
+                  >
+                    <span>{message.body}</span>
+                  </div>
+                </div>
+                <div
+                  className={`message--header ${
+                    message.user_id === Store.user?.$id ? "justify-end" : ""
+                  } `}
+                >
+                  <p>
+                    {message?.username ? (
+                      <span> {message?.username}</span>
+                    ) : (
+                      "Anonymous user"
+                    )}
+
+                    <small className="message-timestamp">
+                      {new Date(message.$createdAt).toLocaleString()}
+                    </small>
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 };
 

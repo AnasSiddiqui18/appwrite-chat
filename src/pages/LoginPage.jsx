@@ -2,12 +2,15 @@ import { useState } from "react";
 // import { useAuth } from "../utils/Store";
 import { Link, useNavigate } from "react-router-dom";
 import "../index.css";
-import { Store } from "../utils/Store";
+import { Store } from "../lib/utils/Store";
+import { useSnapshot } from "valtio";
 // import { useEffect } from "react";
 
 const LoginPage = () => {
   // const { handleUserLogin } = useAuth();
   const [credentials, setCredentials] = useState({ email: "", password: "" });
+
+  const State = useSnapshot(Store);
 
   const navigate = useNavigate();
 
@@ -27,23 +30,26 @@ const LoginPage = () => {
     navigate("/");
   };
 
-  if (Store.loading) {
-    console.log("loading is true");
-  } else {
-    console.log("loading is false");
-  }
+  // if (State.loading) {
+  //   console.log("state true");
+  //   return <div>Login Loading...</div>;
+  // } else {
+  //   console.log("state false");
+  // }
 
-  // const interval = setTimeout(() => {
-  //   Store.loading === false;
-  // }, 3000);
+  // useEffect(() => {
+  //   const interval = setTimeout(() => {
+  //     Store.loading = false;
+  //   }, 1500);
 
-  // return () => clearInterval(interval);
-
-  window.store = Store;
+  //   return () => clearInterval(interval);
+  // }, [State]);
 
   return (
-    <div className="auth--container">
-      <div className="form--wrapper">
+    <div className="auth--container flex flex-col">
+      {State.loading ? <div> Logging... </div> : null}
+
+      <div className="form--wrapper border-2">
         <form
           onSubmit={(e) => {
             submitHandler(e, credentials);
@@ -82,6 +88,7 @@ const LoginPage = () => {
               type="submit"
               value="Login"
               className="btn btn--lg btn--main"
+              style={{ backgroundColor: "#ffa800", color: "black" }}
             />
           </div>
         </form>
@@ -89,8 +96,6 @@ const LoginPage = () => {
         <p>
           Dont have an account? Register <Link to="/register">here</Link>
         </p>
-
-        <p onClick={() => Store.setLoading(true)}>Toggle Loading</p>
       </div>
     </div>
   );

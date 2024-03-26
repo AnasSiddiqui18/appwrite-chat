@@ -1,21 +1,30 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut, LogIn } from "react-feather";
-import { Store } from "../utils/Store";
+import { Store } from "../lib/utils/Store";
+import PropTypes from "prop-types";
 
-const Header = () => {
+// import { useSnapshot } from "valtio";
+import React from "react";
+
+const Header = React.memo(function Header({ state }) {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await Store.handleLogout();
-    navigate("/login");
+  const LogoutHandler = async () => {
+    try {
+      console.log("log out working");
+      await Store.handleLogout();
+      navigate("/login");
+    } catch (error) {
+      console.log(`error while logging out`, error);
+    }
   };
 
   return (
     <div id="header--wrapper">
       {Store.user ? (
         <>
-          Welcome {Store.user.name}
-          <LogOut className="header--link" onClick={handleLogout} />
+          {state}
+          <LogOut className="header--link" onClick={LogoutHandler} />
         </>
       ) : (
         <>
@@ -26,6 +35,10 @@ const Header = () => {
       )}
     </div>
   );
+});
+
+Header.propTypes = {
+  state: PropTypes.string,
 };
 
 export default Header;
